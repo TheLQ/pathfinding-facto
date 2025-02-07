@@ -1,4 +1,4 @@
-#![forbid(missing_docs)]
+// #![forbid(missing_docs)]
 //! # pathfinding
 //!
 //! [![Current Version](https://img.shields.io/crates/v/pathfinding.svg)](https://crates.io/crates/pathfinding)

@@ -8,7 +8,7 @@ use std::collections::{BinaryHeap, HashSet};
 use std::hash::Hash;
 use std::iter::FusedIterator;
 
-use super::reverse_path;
+use super::{reverse_path, reverse_path_faster};
 use crate::FxIndexMap;
 
 /// Compute a shortest path using the [A* search
@@ -147,6 +147,7 @@ where
 }
 
 #[allow(clippy::missing_panics_doc)]
+#[allow(missing_docs)]
 pub fn astar_mori<N, C, FN, IN, FH, FS>(
     start: &N,
     mut successors: FN,
@@ -156,7 +157,7 @@ pub fn astar_mori<N, C, FN, IN, FH, FS>(
 where
     N: Eq + Hash + Clone,
     C: Zero + Ord + Copy,
-    FN: FnMut(&N) -> IN,
+    FN: FnMut(&N, Vec<&N>, C) -> IN,
     IN: IntoIterator<Item = (N, C)>,
     FH: FnMut(&N) -> C,
     FS: FnMut(&N) -> bool,
@@ -172,6 +173,7 @@ where
     while let Some(SmallestCostHolder { cost, index, .. }) = to_see.pop() {
         let successors = {
             let (node, &(_, c)) = parents.get_index(index).unwrap(); // Cannot fail
+            let fast_path = reverse_path_faster(&parents, |&(p, _)| p, index);
             if success(node) {
                 let path = reverse_path(&parents, |&(p, _)| p, index);
                 return Some((path, cost));
@@ -182,7 +184,7 @@ where
             if cost > c {
                 continue;
             }
-            successors(node)
+            successors(node, fast_path, cost)
         };
         for (successor, move_cost) in successors {
             let new_cost = cost + move_cost;

@@ -34,3 +34,18 @@ where
     // unfold iterator is not double-ended due to its iterative nature.
     path.into_iter().rev().cloned().collect()
 }
+
+fn reverse_path_faster<N, V, F>(parents: &FxIndexMap<N, V>, mut parent: F, start: usize) -> Vec<&N>
+where
+    N: Eq + Hash + Clone,
+    F: FnMut(&V) -> usize,
+{
+    let mut i = start;
+    std::iter::from_fn(|| {
+        parents.get_index(i).map(|(node, value)| {
+            i = parent(value);
+            node
+        })
+    })
+        .collect::<Vec<&N>>()
+}
