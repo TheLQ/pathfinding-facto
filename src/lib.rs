@@ -115,8 +115,12 @@ pub use noderefs::NodeRefs;
 
 use indexmap::{IndexMap, IndexSet};
 use rustc_hash::FxHasher;
-use std::hash::BuildHasherDefault;
+use std::hash::{BuildHasher, BuildHasherDefault};
+use gxhash::GxBuildHasher;
 
+
+// type FxIndexMap<K, V> = IndexMap<K, V, GxBuildHasher>;
+// type FxIndexSet<K> = IndexSet<K, GxBuildHasher>;
 type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
 type FxIndexSet<K> = IndexSet<K, BuildHasherDefault<FxHasher>>;
 

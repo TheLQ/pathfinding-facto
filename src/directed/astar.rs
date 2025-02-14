@@ -154,7 +154,7 @@ pub fn astar_mori<N, C, FN, IN, FH, FS, FX, X>(
     mut heuristic: FH,
     mut success: FS,
     mut processor: FX,
-) -> Option<(Vec<N>, C)>
+) -> Result<(Vec<N>, C), FxIndexMap<N, (usize, C)>>
 where
     N: Eq + Hash + Clone,
     C: Zero + Ord + Copy,
@@ -185,7 +185,7 @@ where
             if success(node) {
                 // println!("success, biggest to_see {highest_to_see} parents {highest_parents}");
                 let path = reverse_path(&parents, |&(p, _)| p, index);
-                return Some((path, cost));
+                return Ok((path, cost));
             }
             // We may have inserted a node several time into the binary heap if we found
             // a better way to access it. Ensure that we are currently dealing with the
@@ -228,7 +228,7 @@ where
             });
         }
     }
-    None
+    Err(parents)
 }
 
 /// Compute all shortest paths using the [A* search
