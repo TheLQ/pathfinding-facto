@@ -1,8 +1,4 @@
-# pathfinding
-
-[![Current Version](https://img.shields.io/crates/v/pathfinding.svg)](https://crates.io/crates/pathfinding)
-[![Documentation](https://docs.rs/pathfinding/badge.svg)](https://docs.rs/pathfinding)
-[![License: Apache-2.0/MIT](https://img.shields.io/crates/l/pathfinding.svg)](#license)
+# pathfinding (facto-loop-miner fork)
 
 This crate implements several pathfinding, flow, and graph algorithms in [Rust](https://rust-lang.org/). The algorithms are generic over their arguments. See [the documentation](https://docs.rs/pathfinding) for more information about the various algorithms.
 

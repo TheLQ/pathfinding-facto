@@ -37,7 +37,7 @@ where
 
 fn reverse_path_faster<N, V, F>(parents: &FxIndexMap<N, V>, mut parent: F, start: usize) -> Vec<&N>
 where
-    N: Eq + Hash + Clone,
+    N: Eq + Hash,
     F: FnMut(&V) -> usize,
 {
     let mut i = start;
@@ -47,5 +47,29 @@ where
             node
         })
     })
-        .collect::<Vec<&N>>()
+    .collect::<Vec<&N>>()
+    // Vec::new()
+}
+
+fn reverse_path_processor<N, V, F, FX, X>(
+    parents: &FxIndexMap<N, V>,
+    mut parent: F,
+    start: usize,
+    mut processor: FX,
+    xer: &mut X,
+) where
+    N: Eq + Hash,
+    F: FnMut(&V) -> usize,
+    FX: FnMut(&mut X, &N),
+{
+    let mut i = start;
+    loop {
+        let res = parents.get_index(i).map(|(node, value)| {
+            i = parent(value);
+            processor(xer, node)
+        });
+        if res.is_none() {
+            break;
+        }
+    }
 }

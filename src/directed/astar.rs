@@ -5,10 +5,10 @@ use indexmap::map::Entry::{Occupied, Vacant};
 use num_traits::Zero;
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashSet};
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 use std::iter::FusedIterator;
 
-use super::{reverse_path, reverse_path_faster};
+use super::{reverse_path, reverse_path_faster, reverse_path_processor};
 use crate::FxIndexMap;
 
 /// Compute a shortest path using the [A* search
@@ -148,33 +148,42 @@ where
 
 #[allow(clippy::missing_panics_doc)]
 #[allow(missing_docs)]
-pub fn astar_mori<N, C, FN, IN, FH, FS>(
-    start: &N,
+pub fn astar_mori<N, C, FN, IN, FH, FS, FX, X>(
+    start: N,
     mut successors: FN,
     mut heuristic: FH,
     mut success: FS,
+    mut processor: FX,
 ) -> Option<(Vec<N>, C)>
 where
     N: Eq + Hash + Clone,
     C: Zero + Ord + Copy,
-    FN: FnMut(&N, Vec<&N>, C) -> IN,
+    // FN: FnMut(&N, Vec<&N>, C) -> IN,
+    FN: FnMut(&N, &X, C) -> IN,
     IN: IntoIterator<Item = (N, C)>,
     FH: FnMut(&N) -> C,
     FS: FnMut(&N) -> bool,
+    FX: FnMut(&mut X, &N),
+    X: Default,
 {
-    let mut to_see = BinaryHeap::new();
+    // let mut to_see = BinaryHeap::new();
+    let mut to_see = BinaryHeap::with_capacity(5_000_000);
+    let mut highest_to_see = 0;
     to_see.push(SmallestCostHolder {
         estimated_cost: Zero::zero(),
         cost: Zero::zero(),
         index: 0,
     });
-    let mut parents: FxIndexMap<N, (usize, C)> = FxIndexMap::default();
-    parents.insert(start.clone(), (usize::MAX, Zero::zero()));
+    // let mut parents: FxIndexMap<N, (usize, C)> = FxIndexMap::default();
+    let mut parents: FxIndexMap<N, (usize, C)> =
+        FxIndexMap::with_capacity_and_hasher(5_000_000, Default::default());
+    let mut highest_parents = 0;
+    parents.insert(start, (usize::MAX, Zero::zero()));
     while let Some(SmallestCostHolder { cost, index, .. }) = to_see.pop() {
         let successors = {
             let (node, &(_, c)) = parents.get_index(index).unwrap(); // Cannot fail
-            let fast_path = reverse_path_faster(&parents, |&(p, _)| p, index);
             if success(node) {
+                // println!("success, biggest to_see {highest_to_see} parents {highest_parents}");
                 let path = reverse_path(&parents, |&(p, _)| p, index);
                 return Some((path, cost));
             }
@@ -184,7 +193,10 @@ where
             if cost > c {
                 continue;
             }
-            successors(node, fast_path, cost)
+            // let fast_path = reverse_path_faster(&parents, |&(p, _)| p, index);
+            let xer = &mut X::default();
+            reverse_path_processor(&parents, |&(p, _)| p, index, |x, n| processor(x, n), xer);
+            successors(node, xer, cost)
         };
         for (successor, move_cost) in successors {
             let new_cost = cost + move_cost;
@@ -206,7 +218,9 @@ where
                     }
                 }
             }
+            highest_parents = highest_parents.max(parents.len());
 
+            highest_to_see = highest_to_see.max(to_see.len());
             to_see.push(SmallestCostHolder {
                 estimated_cost: new_cost + h,
                 cost: new_cost,
