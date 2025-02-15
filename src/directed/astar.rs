@@ -154,7 +154,7 @@ pub fn astar_mori<N, C, FN, IN, FH, FS, FX, X>(
     mut heuristic: FH,
     mut success: FS,
     mut processor: FX,
-) -> Result<(Vec<N>, C), FxIndexMap<N, (usize, C)>>
+) -> Result<(Vec<N>, C), (FxIndexMap<N, (usize, C)>, Vec<N>)>
 where
     N: Eq + Hash + Clone,
     C: Zero + Ord + Copy,
@@ -166,6 +166,9 @@ where
     FX: FnMut(&mut X, &N),
     X: Default,
 {
+    const HUGE_GRAD_MODE: bool = true;
+    let mut all: Vec<&N> = Vec::new();
+
     // let mut to_see = BinaryHeap::new();
     let mut to_see = BinaryHeap::with_capacity(5_000_000);
     let mut highest_to_see = 0;
@@ -199,6 +202,9 @@ where
             successors(node, xer, cost)
         };
         for (successor, move_cost) in successors {
+            if HUGE_GRAD_MODE {
+                all.push(&successor);
+            }
             let new_cost = cost + move_cost;
             let h; // heuristic(&successor)
             let n; // index for successor
@@ -228,7 +234,8 @@ where
             });
         }
     }
-    Err(parents)
+    // Err((parents, all.into_iter().cloned().collect()))
+    Err((parents, all))
 }
 
 /// Compute all shortest paths using the [A* search
