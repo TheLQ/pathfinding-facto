@@ -227,8 +227,7 @@ pub fn astar_mori<N, C, FN, IN, FH, FS, FG, const BACK_SIZE: usize>(
 where
     N: Eq + Hash + Clone,
     C: Zero + Ord + Copy,
-    // FN: FnMut(&N, Vec<&N>, C) -> IN,
-    FN: FnMut(&N, &X, C) -> IN,
+    FN: FnMut(&N) -> IN,
     IN: IntoIterator<Item = (N, C)>,
     FH: FnMut(&N) -> C,
     FS: FnMut(&N) -> bool,
