@@ -1,12 +1,12 @@
 //! Compute a shortest path (or all shorted paths) using the [A* search
 //! algorithm](https://en.wikipedia.org/wiki/A*_search_algorithm).
-
 use indexmap::map::Entry::{Occupied, Vacant};
 use num_traits::Zero;
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::iter::FusedIterator;
+use std::mem::MaybeUninit;
 
 use super::{reverse_path, reverse_path_faster, reverse_path_processor};
 use crate::FxIndexMap;
@@ -156,7 +156,7 @@ pub fn astar_mori2<N, C, FN, IN, FH, FS>(
 where
     N: Eq + Hash + Clone,
     C: Zero + Ord + Copy,
-    FN: FnMut(&N) -> IN,
+    FN: FnMut(&N, &N) -> IN,
     IN: IntoIterator<Item = (N, C)>,
     FH: FnMut(&N) -> C,
     FS: FnMut(&N) -> bool,
@@ -171,7 +171,7 @@ where
     parents.insert(start.clone(), (usize::MAX, Zero::zero()));
     while let Some(SmallestCostHolder { cost, index, .. }) = to_see.pop() {
         let successors = {
-            let (node, &(_, c)) = parents.get_index(index).unwrap(); // Cannot fail
+            let (node, &(parent_index, c)) = parents.get_index(index).unwrap(); // Cannot fail
             if success(node) {
                 let path = reverse_path(&parents, |&(p, _)| p, index);
                 return Some((path, cost));
@@ -182,7 +182,11 @@ where
             if cost > c {
                 continue;
             }
-            successors(node)
+            let parent = parents
+                .get_index(parent_index)
+                .map(|(parent, grandparent_index)| parent)
+                .unwrap_or(start);
+            successors(node, parent)
         };
         for (successor, move_cost) in successors {
             let new_cost = cost + move_cost;
@@ -223,7 +227,7 @@ pub fn astar_mori<N, C, FN, IN, FH, FS, FG, const BACK_SIZE: usize>(
     mut heuristic: FH,
     mut success: FS,
     mut is_path_good: FG,
-) -> Result<(Vec<N>, C), (FxIndexMap<N, (usize, C)>, Vec<N>)>
+) -> Result<(Vec<N>, C), AStarErr<N, C>>
 where
     N: Eq + Hash + Clone,
     C: Zero + Ord + Copy,
@@ -234,7 +238,7 @@ where
     FG: FnMut(&mut [&N]) -> bool,
 {
     const HUGE_GRAD_MODE: bool = true;
-    let mut all: Vec<&N> = Vec::new();
+    let mut all_seen: Vec<N> = Vec::new();
 
     // let mut to_see = BinaryHeap::new();
     let mut to_see = BinaryHeap::with_capacity(5_000_000);
@@ -275,7 +279,7 @@ where
         };
         for (successor, move_cost) in successors {
             if HUGE_GRAD_MODE {
-                all.push(&successor);
+                all_seen.push(successor.clone());
             }
             let new_cost = cost + move_cost;
             let h; // heuristic(&successor)
@@ -306,8 +310,16 @@ where
             });
         }
     }
-    // Err((parents, all.into_iter().cloned().collect()))
-    Err((parents, all))
+    Err(AStarErr {
+        parents,
+        seen: all_seen,
+    })
+}
+
+#[derive(Default)]
+pub struct AStarErr<N, C> {
+    pub parents: FxIndexMap<N, (usize, C)>,
+    pub seen: Vec<N>,
 }
 
 /// Compute all shortest paths using the [A* search
