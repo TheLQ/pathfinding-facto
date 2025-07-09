@@ -51,25 +51,24 @@ where
     // Vec::new()
 }
 
-fn reverse_path_processor<N, V, F, FX, X>(
-    parents: &FxIndexMap<N, V>,
+fn reverse_path_processor<'m, N, V, F, const BACK_SIZE: usize>(
+    parents: &'m FxIndexMap<N, V>,
     mut parent: F,
     start: usize,
-    mut processor: FX,
-    xer: &mut X,
-) where
+    backwards: &mut [&'m N; BACK_SIZE],
+) -> usize
+where
     N: Eq + Hash,
     F: FnMut(&V) -> usize,
-    FX: FnMut(&mut X, &N),
 {
-    let mut i = start;
-    loop {
-        let res = parents.get_index(i).map(|(node, value)| {
-            i = parent(value);
-            processor(xer, node)
-        });
-        if res.is_none() {
-            break;
+    let mut node_i = start;
+    for back_i in 0..backwards.len() {
+        if let Some((node, value)) = parents.get_index(node_i) {
+            node_i = parent(value);
+            backwards[back_i] = node;
+        } else {
+            return back_i;
         }
     }
+    backwards.len()
 }
