@@ -217,12 +217,12 @@ where
 
 #[allow(clippy::missing_panics_doc)]
 #[allow(missing_docs)]
-pub fn astar_mori<N, C, FN, IN, FH, FS, FX, X>(
+pub fn astar_mori<N, C, FN, IN, FH, FS, FG, const BACK_SIZE: usize>(
     start: N,
     mut successors: FN,
     mut heuristic: FH,
     mut success: FS,
-    mut processor: FX,
+    mut is_path_good: FG,
 ) -> Result<(Vec<N>, C), (FxIndexMap<N, (usize, C)>, Vec<N>)>
 where
     N: Eq + Hash + Clone,
@@ -232,8 +232,7 @@ where
     IN: IntoIterator<Item = (N, C)>,
     FH: FnMut(&N) -> C,
     FS: FnMut(&N) -> bool,
-    FX: FnMut(&mut X, &N),
-    X: Default,
+    FG: FnMut(&mut [&N]) -> bool,
 {
     const HUGE_GRAD_MODE: bool = true;
     let mut all: Vec<&N> = Vec::new();
@@ -266,9 +265,14 @@ where
                 continue;
             }
             // let fast_path = reverse_path_faster(&parents, |&(p, _)| p, index);
-            let xer = &mut X::default();
-            reverse_path_processor(&parents, |&(p, _)| p, index, |x, n| processor(x, n), xer);
-            successors(node, xer, cost)
+            let mut backwards_path: [&N; BACK_SIZE] = unsafe { std::mem::zeroed() };
+            let backwards_len =
+                reverse_path_processor(&parents, |&(p, _)| p, index, &mut backwards_path);
+            if !is_path_good(&mut backwards_path[0..backwards_len]) {
+                continue;
+            }
+            // successors(node, xer)
+            successors(node)
         };
         for (successor, move_cost) in successors {
             if HUGE_GRAD_MODE {
