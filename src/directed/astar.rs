@@ -262,6 +262,13 @@ where
         let successors = {
             let (node, &(_, c)) = parents.get_index(index).unwrap(); // Cannot fail
             if success(node) {
+                let mut backwards_path: [&N; BACK_SIZE] = unsafe { std::mem::zeroed() };
+                let backwards_len =
+                    reverse_path_processor(&parents, |&(p, _)| p, index, &mut backwards_path);
+                if !is_path_good(&mut backwards_path[0..backwards_len]) {
+                    continue;
+                }
+
                 // println!("success, biggest to_see {highest_to_see} parents {highest_parents}");
                 let path = reverse_path(&parents, |&(p, _)| p, index);
                 return Ok((path, cost));
@@ -272,14 +279,6 @@ where
             if cost > c {
                 continue;
             }
-            // let fast_path = reverse_path_faster(&parents, |&(p, _)| p, index);
-            let mut backwards_path: [&N; BACK_SIZE] = unsafe { std::mem::zeroed() };
-            let backwards_len =
-                reverse_path_processor(&parents, |&(p, _)| p, index, &mut backwards_path);
-            if !is_path_good(&mut backwards_path[0..backwards_len]) {
-                continue;
-            }
-
             if std::hint::unlikely(parents.len() > parents_cap) {
                 panic!("parents too big? {}", parents.len());
             }
