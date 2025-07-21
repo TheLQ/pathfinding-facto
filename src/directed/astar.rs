@@ -240,8 +240,13 @@ where
     const HUGE_GRAD_MODE: bool = true;
     let mut all_seen: Vec<N> = Vec::new();
 
+    // 4k too small
+    let to_see_cap = 5_000;
+    // 400k too small (exactly 100x?)
+    let parents_cap = 500_000;
+
     // let mut to_see = BinaryHeap::new();
-    let mut to_see = BinaryHeap::with_capacity(5_000_000);
+    let mut to_see = BinaryHeap::with_capacity(to_see_cap);
     let mut highest_to_see = 0;
     to_see.push(SmallestCostHolder {
         estimated_cost: Zero::zero(),
@@ -250,7 +255,7 @@ where
     });
     // let mut parents: FxIndexMap<N, (usize, C)> = FxIndexMap::default();
     let mut parents: FxIndexMap<N, (usize, C)> =
-        FxIndexMap::with_capacity_and_hasher(5_000_000, Default::default());
+        FxIndexMap::with_capacity_and_hasher(parents_cap, Default::default());
     let mut highest_parents = 0;
     parents.insert(start, (usize::MAX, Zero::zero()));
     while let Some(SmallestCostHolder { cost, index, .. }) = to_see.pop() {
@@ -274,7 +279,13 @@ where
             if !is_path_good(&mut backwards_path[0..backwards_len]) {
                 continue;
             }
-            // successors(node, xer)
+
+            if std::hint::unlikely(parents.len() > parents_cap) {
+                panic!("parents too big? {}", parents.len());
+            }
+            if std::hint::unlikely(to_see.len() > to_see_cap) {
+                panic!("to_see too big? {}", to_see.len());
+            }
             successors(node)
         };
         for (successor, move_cost) in successors {

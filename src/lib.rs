@@ -1,3 +1,5 @@
+#![feature(likely_unlikely)]
+
 // #![forbid(missing_docs)]
 //! # pathfinding
 //!
